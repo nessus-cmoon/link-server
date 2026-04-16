@@ -5,16 +5,21 @@ app.use(express.json());
 
 let currentUrl = "no link yet";
 
-// обновление ссылки с ПК
+// 📥 принимаем ссылку от C#
 app.post("/update", (req, res) => {
-    currentUrl = req.body.url;
-    console.log("Updated:", currentUrl);
-    res.send("ok");
+    currentUrl = req.body.url || "no link yet";
+    console.log("UPDATED:", currentUrl);
+    res.send("OK");
 });
 
-// отдаём Android
+// 📤 отдаём ссылку Android
 app.get("/", (req, res) => {
     res.send(currentUrl);
 });
 
-app.listen(3000, () => console.log("Server running"));
+// Render port
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log("Server running on port", PORT);
+});
