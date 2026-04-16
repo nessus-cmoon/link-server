@@ -1,25 +1,19 @@
 const express = require("express");
 const app = express();
 
-app.use(express.json());
+let url = "no link yet";
 
-let currentUrl = "no link yet";
-
-// 📥 принимаем ссылку от C#
-app.post("/update", (req, res) => {
-    currentUrl = req.body.url || "no link yet";
-    console.log("UPDATED:", currentUrl);
-    res.send("OK");
+// C# отправляет ссылку сюда
+app.get("/set", (req, res) => {
+    url = req.query.url;
+    console.log("UPDATED:", url);
+    res.send("ok");
 });
 
-// 📤 отдаём ссылку Android
+// Android читает отсюда
 app.get("/", (req, res) => {
-    res.send(currentUrl);
+    res.send(url);
 });
 
-// Render port
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log("Server running on port", PORT);
-});
+app.listen(PORT);
