@@ -19,7 +19,7 @@ function verify(url, hash) {
 app.get("/set", (req, res) => {
     const { url, hash } = req.query;
 
-    if (!url  !hash  !verify(url, hash)) {
+    if (!url || !hash || !verify(url, hash)) {
         return res.send("denied");
     }
 
