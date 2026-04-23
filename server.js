@@ -3,19 +3,23 @@ const crypto = require("crypto");
 
 const app = express();
 
-let currentUrl = "No link yet";
+// текущие данные (что видит Android)
+let currentData = "No link yet";
 
+// секрет (НЕ в Android, только тут и в C#)
 const SECRET = "MY_SUPER_SECRET_123";
 
-function verify(url, hash) {
+// проверка подписи
+function verify(value, hash) {
     const valid = crypto
         .createHash("sha256")
-        .update(url + SECRET)
+        .update(value + SECRET)
         .digest("hex");
 
     return valid === hash;
 }
 
+// 🔐 обновление данных (только через C#)
 app.get("/set", (req, res) => {
     const { url, hash } = req.query;
 
@@ -23,17 +27,24 @@ app.get("/set", (req, res) => {
         return res.send("denied");
     }
 
-    currentUrl = url;
+    currentData = url;
     console.log("UPDATED:", url);
 
     res.send("ok");
 });
 
+// 📱 Android / любой клиент читает тут
 app.get("/", (req, res) => {
-    res.send(currentUrl);
+    res.send(currentData);
+});
+
+// health check (Render любит это)
+app.get("/health", (req, res) => {
+    res.send("alive");
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
     console.log("Server running on port " + PORT);
 });
