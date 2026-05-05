@@ -2,16 +2,17 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
 let devices = {};
 
-// 📱 регистрация / обновление устройства
+// принять или обновить устройство
 app.post("/registerDevice", (req, res) => {
     const name = req.body.deviceName;
 
-    if (!name) return res.json({ ok: false });
+    if (!name) return res.status(400).json({ ok: false });
 
     devices[name] = {
         deviceName: name,
@@ -21,21 +22,19 @@ app.post("/registerDevice", (req, res) => {
     res.json({ ok: true });
 });
 
-// 📊 статус для C#
+// список устройств
 app.get("/status", (req, res) => {
-
     const now = Date.now();
 
-    let list = Object.values(devices).map(d => {
-        return {
-            deviceName: d.deviceName,
-            online: (now - d.lastSeen) < 15000 // 15 сек онлайн
-        };
-    });
+    const list = Object.values(devices).map(d => ({
+        deviceName: d.deviceName,
+        online: now - d.lastSeen < 15000
+    }));
 
     res.json({ devices: list });
 });
 
+// health check
 app.get("/", (req, res) => {
     res.send("OK");
 });
