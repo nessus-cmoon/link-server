@@ -2,42 +2,42 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
 let devices = {};
 
-// принять или обновить устройство
-app.post("/registerDevice", (req, res) => {
-    const name = req.body.deviceName;
+// 📱 обновление статуса
+app.post("/updateStatus", (req, res) => {
+    const d = req.body;
 
-    if (!name) return res.status(400).json({ ok: false });
+    if (!d.deviceName) return res.json({ ok: false });
 
-    devices[name] = {
-        deviceName: name,
+    devices[d.deviceName] = {
+        deviceName: d.deviceName,
+        screenOn: d.screenOn || false,
+        apps: d.apps || [],
         lastSeen: Date.now()
     };
 
     res.json({ ok: true });
 });
 
-// список устройств
+// 📊 статус для панели
 app.get("/status", (req, res) => {
     const now = Date.now();
 
     const list = Object.values(devices).map(d => ({
         deviceName: d.deviceName,
+        screenOn: d.screenOn,
+        appsCount: d.apps.length,
         online: now - d.lastSeen < 15000
     }));
 
     res.json({ devices: list });
 });
 
-// health check
-app.get("/", (req, res) => {
-    res.send("OK");
-});
+app.get("/", (req, res) => res.send("OK"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT);
