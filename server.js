@@ -1,50 +1,43 @@
 const express = require("express");
-const crypto = require("crypto");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 
-// текущие данные (что видит Android)
-let currentData = "No link yet";
+let devices = {};
 
-// секрет (НЕ в Android, только тут и в C#)
-const SECRET = "MY_SUPER_SECRET_123";
+// 📱 Android отправляет статус
+app.post("/updateStatus", (req, res) => {
+    const data = req.body;
 
-// проверка подписи
-function verify(value, hash) {
-    const valid = crypto
-        .createHash("sha256")
-        .update(value + SECRET)
-        .digest("hex");
+    const isNew = !devices[data.deviceName];
 
-    return valid === hash;
-}
+    devices[data.deviceName] = {
+        ...data,
+        lastSeen: Date.now()
+    };
 
-// 🔐 обновление данных (только через C#)
-app.get("/set", (req, res) => {
-    const { url, hash } = req.query;
-
-    if (!url || !hash || !verify(url, hash)) {
-        return res.send("denied");
-    }
-
-    currentData = url;
-    console.log("UPDATED:", url);
-
-    res.send("ok");
+    res.json({
+        ok: true,
+        isNew: isNew
+    });
 });
 
-// 📱 Android / любой клиент читает тут
+// 📊 Панель получает ВСЁ + новые устройства
+app.get("/status", (req, res) => {
+    const list = Object.values(devices);
+
+    res.json({
+        devices: list,
+        newDevices: list.filter(d => Date.now() - d.lastSeen < 10000)
+    });
+});
+
+// 🟢 health check
 app.get("/", (req, res) => {
-    res.send(currentData);
-});
-
-// health check (Render любит это)
-app.get("/health", (req, res) => {
-    res.send("alive");
+    res.send("OK");
 });
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log("Server running on port " + PORT);
-});
+app.listen(PORT, () => console.log("Server running"));
