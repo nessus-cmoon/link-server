@@ -7,37 +7,38 @@ app.use(express.json());
 
 let devices = {};
 
-// 📱 Android отправляет статус
-app.post("/updateStatus", (req, res) => {
-    const data = req.body;
+// 📱 регистрация / обновление устройства
+app.post("/registerDevice", (req, res) => {
+    const name = req.body.deviceName;
 
-    const isNew = !devices[data.deviceName];
+    if (!name) return res.json({ ok: false });
 
-    devices[data.deviceName] = {
-        ...data,
+    devices[name] = {
+        deviceName: name,
         lastSeen: Date.now()
     };
 
-    res.json({
-        ok: true,
-        isNew: isNew
-    });
+    res.json({ ok: true });
 });
 
-// 📊 Панель получает ВСЁ + новые устройства
+// 📊 статус для C#
 app.get("/status", (req, res) => {
-    const list = Object.values(devices);
 
-    res.json({
-        devices: list,
-        newDevices: list.filter(d => Date.now() - d.lastSeen < 10000)
+    const now = Date.now();
+
+    let list = Object.values(devices).map(d => {
+        return {
+            deviceName: d.deviceName,
+            online: (now - d.lastSeen) < 15000 // 15 сек онлайн
+        };
     });
+
+    res.json({ devices: list });
 });
 
-// 🟢 health check
 app.get("/", (req, res) => {
     res.send("OK");
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running"));
+app.listen(PORT);
