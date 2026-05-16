@@ -1,40 +1,42 @@
 const express = require("express");
-const cors = require("cors");
-
 const app = express();
-app.use(cors());
+
 app.use(express.json());
 
-let devices = {};
-let seen = {};
+const devices = {};
 
-app.post("/updateStatus", (req, res) => {
-    const d = req.body;
+// 🔌 получение heartbeat от Android
+app.post("/heartbeat", (req, res) => {
+    const { deviceName, screenOn, apps, timestamp } = req.body;
 
-    const isNew = !seen[d.deviceName];
-    seen[d.deviceName] = true;
-
-    devices[d.deviceName] = {
-        ...d,
+    devices[deviceName] = {
+        deviceName,
+        screenOn,
+        apps: apps || [],
         lastSeen: Date.now()
     };
 
-    res.json({ ok: true, newDevice: isNew });
+    res.sendStatus(200);
 });
 
-app.get("/status", (req, res) => {
+// 📊 список устройств для панели
+app.get("/devices", (req, res) => {
+
     const now = Date.now();
 
-    const list = Object.values(devices).map(d => ({
-        deviceName: d.deviceName,
-        online: now - d.lastSeen < 15000,
-        screenOn: d.screenOn,
-        notif: d.notif,
-        access: d.access,
-        appsCount: d.apps?.length || 0
-    }));
+    const result = Object.values(devices).map(d => {
+        return {
+            deviceName: d.deviceName,
+            screenOn: d.screenOn,
+            apps: d.apps,
+            online: (now - d.lastSeen) < 15000,
+            lastSeenAgo: Math.floor((now - d.lastSeen) / 1000)
+        };
+    });
 
-    res.json({ devices: list });
+    res.json(result);
 });
 
-app.listen(process.env.PORT || 3000);
+app.listen(3000, () => {
+    console.log("Server running");
+});
