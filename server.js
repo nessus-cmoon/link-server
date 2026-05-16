@@ -3,40 +3,63 @@ const app = express();
 
 app.use(express.json());
 
-const devices = {};
+// 🧠 временное хранилище устройства
+let deviceState = {
+    deviceName: "unknown",
+    online: false,
+    screenOn: false,
+    apps: [],
+    notifications: [],
+    lastSeen: 0
+};
 
-// 🔌 получение heartbeat от Android
+// 🔵 ROOT
+app.get("/", (req, res) => {
+    res.send("Server is running");
+});
+
+// 🔵 HEARTBEAT (C# читает отсюда)
+app.get("/heartbeat", (req, res) => {
+    res.json(deviceState);
+});
+
+// 🔵 RECEIVE DATA FROM ANDROID
 app.post("/heartbeat", (req, res) => {
-    const { deviceName, screenOn, apps, timestamp } = req.body;
 
-    devices[deviceName] = {
-        deviceName,
-        screenOn,
-        apps: apps || [],
+    const data = req.body;
+
+    deviceState = {
+        deviceName: data.deviceName || deviceState.deviceName,
+        online: true,
+        screenOn: data.screenOn || false,
+        apps: data.apps || [],
+        notifications: data.notifications || [],
         lastSeen: Date.now()
     };
 
-    res.sendStatus(200);
+    res.json({ status: "ok" });
 });
 
-// 📊 список устройств для панели
-app.get("/devices", (req, res) => {
+// 🔵 SIMPLE STATUS CHECK
+app.get("/status", (req, res) => {
+    res.json({
+        online: true,
+        lastSeen: deviceState.lastSeen
+    });
+});
 
+// 🔵 AUTO OFFLINE CHECK (простая логика)
+setInterval(() => {
     const now = Date.now();
 
-    const result = Object.values(devices).map(d => {
-        return {
-            deviceName: d.deviceName,
-            screenOn: d.screenOn,
-            apps: d.apps,
-            online: (now - d.lastSeen) < 15000,
-            lastSeenAgo: Math.floor((now - d.lastSeen) / 1000)
-        };
-    });
+    if (now - deviceState.lastSeen > 15000) {
+        deviceState.online = false;
+    }
+}, 5000);
 
-    res.json(result);
-});
+// 🔵 START SERVER
+const PORT = process.env.PORT || 3000;
 
-app.listen(3000, () => {
-    console.log("Server running");
+app.listen(PORT, () => {
+    console.log("Server running on port " + PORT);
 });
