@@ -3,63 +3,51 @@ const app = express();
 
 app.use(express.json());
 
-// 🧠 временное хранилище устройства
-let deviceState = {
+let state = {
+    updated: false,
     deviceName: "unknown",
     online: false,
     screenOn: false,
     apps: [],
-    notifications: [],
-    lastSeen: 0
+    notifications: []
 };
 
-// 🔵 ROOT
-app.get("/", (req, res) => {
-    res.send("Server is running");
-});
+// 🟢 Android отправляет данные сюда
+app.post("/push", (req, res) => {
+    try {
+        const data = req.body;
 
-// 🔵 HEARTBEAT (C# читает отсюда)
-app.get("/heartbeat", (req, res) => {
-    res.json(deviceState);
-});
+        state.deviceName = data.deviceName  "unknown";
+        state.online = true;
+        state.screenOn = data.screenOn  false;
+        state.apps = data.apps  [];
+        state.notifications = data.notifications  [];
 
-// 🔵 RECEIVE DATA FROM ANDROID
-app.post("/heartbeat", (req, res) => {
+        state.updated = true;
 
-    const data = req.body;
-
-    deviceState = {
-        deviceName: data.deviceName || deviceState.deviceName,
-        online: true,
-        screenOn: data.screenOn || false,
-        apps: data.apps || [],
-        notifications: data.notifications || [],
-        lastSeen: Date.now()
-    };
-
-    res.json({ status: "ok" });
-});
-
-// 🔵 SIMPLE STATUS CHECK
-app.get("/status", (req, res) => {
-    res.json({
-        online: true,
-        lastSeen: deviceState.lastSeen
-    });
-});
-
-// 🔵 AUTO OFFLINE CHECK (простая логика)
-setInterval(() => {
-    const now = Date.now();
-
-    if (now - deviceState.lastSeen > 15000) {
-        deviceState.online = false;
+        console.log("📩 DATA RECEIVED");
+        res.json({ ok: true });
+    } catch (e) {
+        console.log("ERROR PUSH:", e);
+        res.status(500).json({ ok: false });
     }
-}, 5000);
+});
 
-// 🔵 START SERVER
+// 🟢 C# panel читает состояние
+app.get("/heartbeat", (req, res) => {
+    res.json(state);
+
+    // после отправки сбрасываем флаг обновления
+    state.updated = false;
+});
+
+// 🟢 проверка сервера
+app.get("/", (req, res) => {
+    res.send("SERVER OK");
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("Server running on port " + PORT);
+    console.log("SERVER RUNNING ON PORT " + PORT);
 });
