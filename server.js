@@ -3,54 +3,69 @@ const app = express();
 
 app.use(express.json());
 
-// 🟢 состояние сервера
+// 🟢 STATE
 let state = {
-    updated: false,
     deviceName: "unknown",
     online: false,
     screenOn: false,
     apps: [],
-    notifications: []
+    notifications: [],
+    updated: false
 };
 
-// 🟢 Android отправляет данные сюда
+let lastPing = 0;
+
+// 🟢 CONNECT SIGNAL
+app.post("/connect", (req, res) => {
+    state.deviceName = req.body.deviceName || "unknown";
+    state.online = true;
+
+    lastPing = Date.now();
+
+    console.log("🔌 CONNECT:", state.deviceName);
+
+    res.json({ ok: true });
+});
+
+// 🟢 DATA PUSH
 app.post("/push", (req, res) => {
     try {
         const data = req.body || {};
 
         state.deviceName = data.deviceName || "unknown";
-        state.online = true;
         state.screenOn = data.screenOn || false;
         state.apps = data.apps || [];
         state.notifications = data.notifications || [];
-
         state.updated = true;
 
-        console.log("📩 DATA RECEIVED");
-        res.json({ ok: true });
+        lastPing = Date.now();
 
+        console.log("📩 PUSH DATA");
+
+        res.json({ ok: true });
     } catch (e) {
         console.log("ERROR PUSH:", e);
         res.status(500).json({ ok: false });
     }
 });
 
-// 🟢 C# читает состояние
+// 🟢 HEARTBEAT (C#)
 app.get("/heartbeat", (req, res) => {
     res.json(state);
-
-    // сбрасываем флаг обновления после отдачи
     state.updated = false;
 });
 
-// 🟢 проверка сервера
+// 🟢 OFFLINE CHECK
+setInterval(() => {
+    if (Date.now() - lastPing > 8000) {
+        state.online = false;
+    }
+}, 3000);
+
+// 🟢 ROOT
 app.get("/", (req, res) => {
     res.send("SERVER OK");
 });
 
-// 🟢 запуск
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log("SERVER RUNNING ON PORT " + PORT);
-});
+app.listen(PORT, () => console.log("RUNNING " + PORT));
